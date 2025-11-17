@@ -219,7 +219,10 @@ namespace IMGUIZMO_NAMESPACE
       const vec_t& operator + () const { return (*this); }
       float Length() const { return sqrtf(x * x + y * y + z * z); };
       float LengthSq() const { return (x * x + y * y + z * z); };
-      vec_t Normalize() { (*this) *= (1.f / ( Length() > FLT_EPSILON ? Length() : FLT_EPSILON ) ); return (*this); }
+      vec_t Normalize() {
+         (*this) *= (1.f / ( Length() > FLT_EPSILON ? Length() : FLT_EPSILON ) );
+         return (*this);
+      }
       vec_t Normalize(const vec_t& v) { this->Set(v.x, v.y, v.z, v.w); this->Normalize(); return (*this); }
       vec_t Abs() const;
 
@@ -276,7 +279,12 @@ namespace IMGUIZMO_NAMESPACE
    vec_t vec_t::operator * (const vec_t& v) const { return makeVect(x * v.x, y * v.y, z * v.z, w * v.w); }
    vec_t vec_t::Abs() const { return makeVect(fabsf(x), fabsf(y), fabsf(z)); }
 
-   vec_t Normalized(const vec_t& v) { vec_t res; res = v; res.Normalize(); return res; }
+   vec_t Normalized(const vec_t& v) {
+      vec_t res(v);
+      res.Normalize();
+      return res;
+   }
+
    vec_t Cross(const vec_t& v1, const vec_t& v2)
    {
       vec_t res;
@@ -1295,51 +1303,41 @@ namespace IMGUIZMO_NAMESPACE
       gContext.mRadiusSquareCenter = screenRotateSize * gContext.mHeight;
 
       bool hasRSC = Intersects(op, ROTATE_SCREEN);
-      for (int axis = 0; axis < 3; axis++)
-      {
+      for (int axis = 0; axis < 3; axis++) {
          if(!Intersects(op, static_cast<OPERATION>(ROTATE_Z >> axis)))
-         {
             continue;
-         }
 
          bool isAxisMasked = ((1 << (2 - axis)) & gContext.mAxisMask) != 0;
 
          if ((!isAxisMasked || isMultipleAxesMasked) && !isNoAxesMasked)
-         {
             continue;
-         }
+
          const bool usingAxis = (gContext.mbUsing && type == MT_ROTATE_Z - axis);
-         const int circleMul = (hasRSC && !usingAxis) ? 1 : 2;
+         const int circleMul = 2;
 
          ImVec2* circlePos = (ImVec2*)alloca(sizeof(ImVec2) * (circleMul * halfCircleSegmentCount + 1));
 
-         float angleStart = atan2f(cameraToModelNormalized[(4 - axis) % 3], cameraToModelNormalized[(3 - axis) % 3]) + ZPI * 0.5f;
+         const float angleStart = 0;
 
-         for (int i = 0; i < circleMul * halfCircleSegmentCount + 1; i++)
-         {
+         for (int i = 0; i < circleMul * halfCircleSegmentCount + 1; i++) {
             float ng = angleStart + (float)circleMul * ZPI * ((float)i / (float)(circleMul * halfCircleSegmentCount));
             vec_t axisPos = makeVect(cosf(ng), sinf(ng), 0.f);
             vec_t pos = makeVect(axisPos[axis], axisPos[(axis + 1) % 3], axisPos[(axis + 2) % 3]) * gContext.mScreenFactor * rotationDisplayFactor;
             circlePos[i] = worldToPos(pos, gContext.mMVP);
          }
+
          if (!gContext.mbUsing || usingAxis)
-         {
             drawList->AddPolyline(circlePos, circleMul* halfCircleSegmentCount + 1, colors[3 - axis], false, gContext.mStyle.RotationLineThickness);
-         }
 
          float radiusAxis = sqrtf((ImLengthSqr(worldToPos(gContext.mModel.v.position, gContext.mViewProjection) - circlePos[0])));
          if (radiusAxis > gContext.mRadiusSquareCenter)
-         {
             gContext.mRadiusSquareCenter = radiusAxis;
-         }
-      }
-      if(hasRSC && (!gContext.mbUsing || type == MT_ROTATE_SCREEN) && (!isMultipleAxesMasked && isNoAxesMasked))
-      {
-         drawList->AddCircle(worldToPos(gContext.mModel.v.position, gContext.mViewProjection), gContext.mRadiusSquareCenter, colors[0], 64, gContext.mStyle.RotationOuterLineThickness);
       }
 
-      if (gContext.mbUsing && (gContext.GetCurrentID() == gContext.mEditingID) && IsRotateType(type))
-      {
+      if(hasRSC && (!gContext.mbUsing || type == MT_ROTATE_SCREEN) && (!isMultipleAxesMasked && isNoAxesMasked))
+         drawList->AddCircle(worldToPos(gContext.mModel.v.position, gContext.mViewProjection), gContext.mRadiusSquareCenter * 1.1f, colors[0], 64, gContext.mStyle.RotationOuterLineThickness);
+
+      if (gContext.mbUsing && (gContext.GetCurrentID() == gContext.mEditingID) && IsRotateType(type)) {
          ImVec2 circlePos[halfCircleSegmentCount + 1];
 
          circlePos[0] = worldToPos(gContext.mModel.v.position, gContext.mViewProjection);
@@ -1584,7 +1582,7 @@ namespace IMGUIZMO_NAMESPACE
             if (belowAxisLimit && Intersects(op, static_cast<OPERATION>(TRANSLATE_X << i)))
             {
                ImVec2 baseSSpace = worldToPos(dirAxis * 0.1f * gContext.mScreenFactor, gContext.mMVP);
-               ImVec2 worldDirSSpace = worldToPos(dirAxis * gContext.mScreenFactor, gContext.mMVP);
+               ImVec2 worldDirSSpace = worldToPos(dirAxis * 1.25f * gContext.mScreenFactor, gContext.mMVP);
 
                drawList->AddLine(baseSSpace, worldDirSSpace, colors[i + 1], gContext.mStyle.TranslationLineThickness);
 
@@ -2060,10 +2058,10 @@ namespace IMGUIZMO_NAMESPACE
          vec_t intersectViewPos;
          intersectViewPos.TransformPoint(intersectWorldPos, gContext.mViewMat);
 
-         if (ImAbs(modelViewPos.z) - ImAbs(intersectViewPos.z) < -FLT_EPSILON)
-         {
-            continue;
-         }
+         //if (ImAbs(modelViewPos.z) - ImAbs(intersectViewPos.z) < -FLT_EPSILON)
+         //{
+         //   continue;
+         //}
 
          const vec_t localPos = intersectWorldPos - gContext.mModel.v.position;
          vec_t idealPosOnCircle = Normalized(localPos);
@@ -2074,6 +2072,7 @@ namespace IMGUIZMO_NAMESPACE
          const ImVec2 distanceOnScreen = idealPosOnCircleScreen - io.MousePos;
 
          const float distance = makeVect(distanceOnScreen).Length();
+
          if (distance < 8.f) // pixel size
          {
             if ((!isAxisMasked || isMultipleAxesMasked) && !isNoAxesMasked)
@@ -2516,9 +2515,9 @@ namespace IMGUIZMO_NAMESPACE
 
       mat.OrthoNormalize();
 
-      rotation[0] = RAD2DEG * atan2f(mat.m[1][2], mat.m[2][2]);
-      rotation[1] = RAD2DEG * atan2f(-mat.m[0][2], sqrtf(mat.m[1][2] * mat.m[1][2] + mat.m[2][2] * mat.m[2][2]));
-      rotation[2] = RAD2DEG * atan2f(mat.m[0][1], mat.m[0][0]);
+      rotation[0] = atan2f(mat.m[1][2], mat.m[2][2]);
+      rotation[1] = atan2f(-mat.m[0][2], sqrtf(mat.m[1][2] * mat.m[1][2] + mat.m[2][2] * mat.m[2][2]));
+      rotation[2] = atan2f(mat.m[0][1], mat.m[0][0]);
 
       translation[0] = mat.v.position.x;
       translation[1] = mat.v.position.y;
@@ -2925,7 +2924,7 @@ namespace IMGUIZMO_NAMESPACE
 
    void ViewManipulate(float* view, const float* projection, OPERATION operation, MODE mode, float* matrix, float length, ImVec2 position, ImVec2 size, ImU32 backgroundColor)
    {
-      // Scale is always local or matrix will be skewed when applying world scale or oriented matrix
+      // m_Scale is always local or matrix will be skewed when applying world scale or oriented matrix
       ComputeContext(view, projection, matrix, (operation & SCALE) ? LOCAL : mode);
       ViewManipulate(view, length, position, size, backgroundColor);
    }
